@@ -1,0 +1,78 @@
+//------------------------------------------------
+//--- 010 Editor v9.0.2 Binary Template
+//
+//      File: bink1.bt
+//   Authors: Helco
+//   Version: 1.0
+//   Purpose: Decoding Bink videos
+//  Category: Video
+//  ID Bytes: BIK
+//------------------------------------------------
+
+struct VideoFlags
+{
+  uint gap1 : 17;
+  uint grayscale : 1;
+  uint gap2 : 2;
+  uint alpha : 1;
+  uint gap3 : 7;
+  uint scaling :3;
+};
+
+struct ContainerHeader
+{
+  char signature[3];
+  char codecRevision;
+  uint fileSize;
+  uint frameCount;
+  uint maxFrameSize;
+  uint frameCount2;
+  uint width;
+  uint height;
+  uint fpsDividend;
+  uint fpsDivider;
+  VideoFlags videoFlags;
+  uint audioTrackCount;
+} header;
+
+struct AudioHeader1
+{
+  ushort unknown;
+  ushort channelCount;
+} audioHeaders1[header.audioTrackCount];
+
+struct AudioHeader2
+{
+  ushort sampleRate;
+  ushort gap : 12;
+  ushort dct : 1;
+  ushort stereo : 1;
+  ushort unknown : 2;
+} audioHeaders2[header.audioTrackCount];
+
+uint audioTrackIDs[header.audioTrackCount];
+
+uint frameOffsets[header.frameCount + 1] <format=hex>;
+
+struct AudioPacket
+{
+  uint packetSize;
+  if (packetSize > 0)
+  {
+    uint sampleCount;
+    if (sampleCount > 0)
+        byte data[packetSize - 4];
+  }
+};
+
+struct Frame
+{
+  AudioPacket audioPackets[header.audioTrackCount]  <optimize=false>;
+};
+
+local uint i;
+for (i = 0; i < header.frameCount; i++)
+{
+  FSeek(frameOffsets[i] & ~1);
+  Frame frame;
+}
