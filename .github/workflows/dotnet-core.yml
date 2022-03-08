@@ -16,11 +16,11 @@ jobs:
       with:
         dotnet-version: 6.0.x
     - name: Install dependencies
-      run: dotnet restore
+      run: dotnet restore bonkdec/bonkdec.sln
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build bonkdec/bonkdec.sln --configuration Release --no-restore
     - name: Test
-      run: dotnet test --no-restore --verbosity normal
+      run: dotnet test bonkdec/bonkdec.sln --no-restore --verbosity normal
   Debug:
     runs-on: ubuntu-latest
     steps:
@@ -30,8 +30,8 @@ jobs:
       with:
         dotnet-version: 6.0.x
     - name: Install dependencies
-      run: dotnet restore
+      run: dotnet restore bonkdec/bonkdec.sln
     - name: Build
-      run: dotnet build --configuration Debug --no-restore
+      run: dotnet build bonkdec/bonkdec.sln --configuration Debug --no-restore
     - name: Test
-      run: dotnet test --no-restore --verbosity normal
+      run: dotnet test bonkdec/bonkdec.sln --no-restore --verbosity normal
