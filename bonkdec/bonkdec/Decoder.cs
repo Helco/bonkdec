@@ -46,6 +46,10 @@ public unsafe class Decoder : IDisposable, IEnumerator<Frame>
     private readonly ContainerHeader container;
     internal readonly AudioTrackInfo[] audioTracks;
     internal readonly AudioDecoder?[] audioDecoders;
+    private readonly PlaneDecoder? alphaDecoder;
+    private readonly PlaneDecoder yDecoder;
+    private readonly PlaneDecoder? cbDecoder;
+    private readonly PlaneDecoder? crDecoder;
     private readonly uint[] frameOffsets;
     private readonly bool[] isKeyFrame;
     private readonly byte[] frameBuffer;
@@ -133,6 +137,15 @@ public unsafe class Decoder : IDisposable, IEnumerator<Frame>
         frameBuffer = new byte[container.MaxFrameSize];
         frameStream = new MemoryStream(frameBuffer, writable: false);
         frame = new Frame(this);
+
+        yDecoder = new PlaneDecoder(container, subSampled: false);
+        if (container.VideoFlags.HasFlag(VideoFlags.Alpha))
+            alphaDecoder = new PlaneDecoder(container, subSampled: false);
+        if (!container.VideoFlags.HasFlag(VideoFlags.Grayscale))
+        {
+            cbDecoder = new PlaneDecoder(container, subSampled: true);
+            crDecoder = new PlaneDecoder(container, subSampled: true);
+        }
     }
 
     public void ToggleAudioTrackByIndex(int index, bool enable)
@@ -195,9 +208,33 @@ public unsafe class Decoder : IDisposable, IEnumerator<Frame>
 
             if (audioDecoders[i] != null)
                 audioDecoders[i]!.Decode(sampleCount, new ReadOnlySpan<byte>(frameBuffer, (int)frameStream.Position, (int)audioPacketSize));
+            frameStream.Position += audioPacketSize - 4;
         }
 
-        // TODO: Add video decoder
+        if (alphaDecoder != null)
+        {
+            uint alphaPlaneSize = 0;
+            Read(frameStream, ref alphaPlaneSize, 1);
+            SwapIfNecessary(ref alphaPlaneSize);
+            alphaDecoder.Decode(new ReadOnlySpan<byte>(frameBuffer, (int)frameStream.Position, (int)alphaPlaneSize));
+            frameStream.Position += alphaPlaneSize - 4;
+        }
+        // TODO: Add old/new frame format switches in frame decoding
+
+        uint yPlaneSize = 0;
+        Read(frameStream, ref yPlaneSize, 1);
+        SwapIfNecessary(ref yPlaneSize);
+        var planeBuffer = new ReadOnlySpan<byte>(frameBuffer, (int)frameStream.Position, (int)yPlaneSize);
+        planeBuffer = yDecoder.Decode(planeBuffer);
+        frameStream.Position += yPlaneSize - 4;
+
+        if (cbDecoder != null && crDecoder != null && false)
+        {
+            // TODO: Check order of color planes
+            planeBuffer = cbDecoder.Decode(planeBuffer);
+            crDecoder.Decode(planeBuffer);
+        }
+
         return true;
     }
 

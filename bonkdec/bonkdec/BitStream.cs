@@ -73,10 +73,13 @@ internal unsafe ref struct BitStream
     {
         if (bitsLeft % 32 == 0)
             return;
-        if (currentOffset + 1 == buffer.Length)
-            throw new System.IO.EndOfStreamException("End of bitstream");           
-        currentWord = buffer[++currentOffset];
-        bitsLeft = 32;
+        if (currentOffset + 1 < buffer.Length)
+        {
+            currentWord = buffer[++currentOffset];
+            bitsLeft = 32;
+        }
+        else
+            bitsLeft = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

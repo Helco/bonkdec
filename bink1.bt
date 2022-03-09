@@ -17,6 +17,7 @@ struct VideoFlags
   uint alpha : 1;
   uint gap3 : 7;
   uint scaling :3;
+  uint oldFormat: 1;
 };
 
 struct ContainerHeader
@@ -65,14 +66,26 @@ struct AudioPacket
   }
 };
 
-struct Frame
+struct Plane
+{
+  uint planeSize;
+  if (planeSize >= 4)
+    byte data[planeSize - 4];
+};
+
+struct Frame(uint frameEnd)
 {
   AudioPacket audioPackets[header.audioTrackCount]  <optimize=false>;
+  if (header.videoFlags.alpha)
+    Plane alpha;
+  Plane luminance;
+  if (!header.videoFlags.grayscale)
+    byte cbcr[frameEnd - FTell()];
 };
 
 local uint i;
 for (i = 0; i < header.frameCount; i++)
 {
   FSeek(frameOffsets[i] & ~1);
-  Frame frame;
+  Frame frame(frameOffsets[i + 1]);
 }
