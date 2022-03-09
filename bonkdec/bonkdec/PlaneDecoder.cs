@@ -62,12 +62,12 @@ internal unsafe class PlaneDecoder
         }
         DumpTree(huffBlockType);
         DumpTree(huffSubBlockType);
-        /*Array.ForEach(huffColorsHigh, DumpTree);
+        Array.ForEach(huffColorsHigh, DumpTree);
         DumpTree(huffColorsLow);
         DumpTree(huffPattern);
         DumpTree(huffXMotion);
         DumpTree(huffYMotion);
-        DumpTree(huffPatternColors);*/
+        DumpTree(huffPatternColors);
 
         bitStream.AlignToWord();
         return buffer.Slice(bitStream.currentOffset * 4);

@@ -228,7 +228,7 @@ public unsafe class Decoder : IDisposable, IEnumerator<Frame>
         planeBuffer = yDecoder.Decode(planeBuffer);
         frameStream.Position += yPlaneSize - 4;
 
-        if (cbDecoder != null && crDecoder != null && false)
+        if (cbDecoder != null && crDecoder != null)
         {
             // TODO: Check order of color planes
             planeBuffer = cbDecoder.Decode(planeBuffer);

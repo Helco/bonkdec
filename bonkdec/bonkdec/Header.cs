@@ -49,7 +49,7 @@ internal unsafe struct ContainerHeader
     public VideoFlags VideoFlags;
     public uint AudioTrackCount;
 
-    public VideoScalingMode VideoScalingMode => (VideoScalingMode)(VideoFlags & VideoFlags.SupportedMask);
+    public VideoScalingMode VideoScalingMode => (VideoScalingMode)(VideoFlags & VideoFlags.ScalingMask);
 
     internal void SwapByteOrder()
     {
