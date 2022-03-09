@@ -53,6 +53,22 @@ internal unsafe ref struct BitStream
         return result;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public uint Peek(int bitCount)
+    {
+        if (bitCount < 1 || bitCount > 32)
+            throw new ArgumentOutOfRangeException(nameof(bitCount), "Bit count can only range from 1 to 32 (inclusive");
+
+        uint mask = (1u << bitCount) - 1;
+        if (bitCount <= bitsLeft)
+            return currentWord & mask;
+
+        if (currentOffset + 1 >= buffer.Length)
+            throw new System.IO.EndOfStreamException("End of bitstream");
+        uint result = currentWord | (buffer[currentOffset + 1] << bitsLeft);
+        return result & mask;
+    }
+
     public void AlignToWord()
     {
         if (bitsLeft % 32 == 0)
