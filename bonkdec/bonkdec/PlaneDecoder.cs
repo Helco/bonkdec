@@ -75,11 +75,7 @@ internal unsafe class PlaneDecoder
         bundleYMotion.FillSimple(ref bitStream);
         bundleDCIntra.Fill(ref bitStream);
         bundleDCInter.Fill(ref bitStream);
-        //bundlePatternLengths.FillSimple(ref bitStream);
-
-        bundleDCIntra.Dump(bw);
-        bundleDCInter.Dump(bw);
-        bw.Flush();
+        bundlePatternLengths.FillSimple(ref bitStream);
 
         bitStream.AlignToWord();
         return buffer.Slice(bitStream.currentOffset * 4);
