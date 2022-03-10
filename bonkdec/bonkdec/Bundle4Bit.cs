@@ -14,24 +14,26 @@ internal static class Bundle
 
 internal class Bundle4Bit
 {
-    private readonly sbyte[] buffer; // sbyte for signed 4bit bundles
+    private readonly byte[] buffer; // mind the isSigned flag
     private readonly int maxLengthInBits;
+    private readonly bool isSigned;
     private uint offset, length;
     private Huffman huffman;
 
     public bool IsDone => offset > length;
 
-    public Bundle4Bit(int minValueCount, uint width, int addBlockLinesInBuffer)
+    public Bundle4Bit(int minValueCount, uint width, int addBlockLinesInBuffer, bool isSigned)
     {
         maxLengthInBits = Bundle.GetMaxLengthInBits(minValueCount, width, addBlockLinesInBuffer);
-        buffer = new sbyte[1 << maxLengthInBits];
+        buffer = new byte[1 << maxLengthInBits];
+        this.isSigned = isSigned;
     }
 
     public void Dump(System.IO.BinaryWriter bw)
     {
         bw.Write(length);
         bw.Write(maxLengthInBits);
-        bw.Write(System.Runtime.InteropServices.MemoryMarshal.Cast<sbyte, byte>(buffer).Slice(0, (int)length));
+        bw.Write(buffer, 0, (int)length);
     }
 
     public void Reset(ref BitStream bitStream)
@@ -40,8 +42,8 @@ internal class Bundle4Bit
         huffman = Huffman.ReadTree(ref bitStream);
     }
 
-    public sbyte Next() => offset < length
-        ? buffer[offset++]
+    public int Next() => offset < length
+        ? isSigned ? unchecked((sbyte)buffer[offset++]) : buffer[offset++]
         : throw new BinkDecoderException("Bundle is empty or done");
 
     private static readonly int[] RLELengths = new[] { 4, 8, 12, 32 };
@@ -60,14 +62,14 @@ internal class Bundle4Bit
         if (bitStream.Read(1) == 1)
         {
             // memset mode
-            Array.Fill(buffer, (sbyte)bitStream.Read(4), 0, (int)length);
+            Array.Fill(buffer, (byte)bitStream.Read(4), 0, (int)length);
             return;
         }
 
-        sbyte lastValue = 0;
+        byte lastValue = 0;
         for (int i = 0; i < length; ) // no increment
         {
-            sbyte value = (sbyte)huffman.Read(ref bitStream);
+            byte value = (byte)huffman.Read(ref bitStream);
             if (value < 12)
             {
                 // direct value
@@ -79,6 +81,26 @@ internal class Bundle4Bit
             int rleLength = RLELengths[value - 12];
             Array.Fill(buffer, lastValue, i, rleLength);
             i += rleLength;
+        }
+    }
+
+    public void FillPairs(ref BitStream bitStream)
+    {
+        if (offset != length)
+            return;
+        length = bitStream.Read(maxLengthInBits);
+        if (length == 0)
+        {
+            offset = 1;
+            return;
+        }
+        offset = 0;
+
+        for (int i = 0; i < length; i++)
+        {
+            var lowNibble = huffman.Read(ref bitStream);
+            var highNibble = huffman.Read(ref bitStream);
+            buffer[i] = (byte)(lowNibble | (highNibble << 4));
         }
     }
 }

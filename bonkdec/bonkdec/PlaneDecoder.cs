@@ -12,11 +12,11 @@ internal unsafe class PlaneDecoder
     private readonly byte[][] sampleBuffers;
     private readonly Bundle4Bit bundleBlockType;
     private readonly Bundle4Bit bundleSubBlockType;
+    private readonly Bundle4Bit bundlePattern;
     private readonly Bundle4Bit bundleXMotion;
     private readonly Bundle4Bit bundleYMotion;
     private readonly Bundle4Bit bundlePatternColors;
     private readonly Bundle8Bit bundleColors;
-    private Huffman huffPattern;
     private Huffman huffXMotion;
     private Huffman huffYMotion;
     private Huffman huffPatternColors;
@@ -44,12 +44,13 @@ internal unsafe class PlaneDecoder
             new byte[width * height],
             new byte[width * height]
         };
-        bundleBlockType     = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1);
-        bundleSubBlockType  = new Bundle4Bit(MinValueCount, width / 2, addBlockLinesInBuffer: 1);
-        bundleXMotion       = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1);
-        bundleYMotion       = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1);
-        bundlePatternColors = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 48);
-        bundleColors = new Bundle8Bit(MinValueCount, width, addBlockLinesInBuffer: 64, areColorsSigned);
+        bundleBlockType     = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1, isSigned: false);
+        bundleSubBlockType  = new Bundle4Bit(MinValueCount, width / 2, addBlockLinesInBuffer: 1, isSigned: false);
+        bundlePattern       = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 8, isSigned: false);
+        bundleXMotion       = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1, isSigned: true);
+        bundleYMotion       = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1, isSigned: true);
+        bundlePatternColors = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 48, isSigned: false);
+        bundleColors        = new Bundle8Bit(MinValueCount, width, addBlockLinesInBuffer: 64, areColorsSigned);
     }
 
     public ReadOnlySpan<byte> Decode(ReadOnlySpan<byte> buffer)
@@ -58,7 +59,7 @@ internal unsafe class PlaneDecoder
         bundleBlockType.Reset(ref bitStream);
         bundleSubBlockType.Reset(ref bitStream);
         bundleColors.Reset(ref bitStream);
-        huffPattern = Huffman.ReadTree(ref bitStream);
+        bundlePattern.Reset(ref bitStream);
         huffXMotion = Huffman.ReadTree(ref bitStream);
         huffYMotion = Huffman.ReadTree(ref bitStream);
         huffPatternColors = Huffman.ReadTree(ref bitStream);
@@ -66,8 +67,9 @@ internal unsafe class PlaneDecoder
         bundleBlockType.FillRLE(ref bitStream);
         bundleSubBlockType.FillRLE(ref bitStream);
         bundleColors.Fill(ref bitStream);
+        bundlePattern.FillPairs(ref bitStream);
 
-        bundleColors.Dump(bw);
+        bundlePattern.Dump(bw);
         bw.Flush();
 
         bitStream.AlignToWord();
