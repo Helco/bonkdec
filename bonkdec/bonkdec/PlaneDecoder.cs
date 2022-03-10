@@ -17,9 +17,8 @@ internal unsafe class PlaneDecoder
     private readonly Bundle4Bit bundleYMotion;
     private readonly Bundle4Bit bundlePatternLengths;
     private readonly Bundle8Bit bundleColors;
-    private Huffman huffXMotion;
-    private Huffman huffYMotion;
-    private Huffman huffPatternLengths;
+    private readonly Bundle16Bit bundleDCIntra;
+    private readonly Bundle16Bit bundleDCInter;
 
     private int curBuffer = 0;
     private byte[] Target => sampleBuffers[curBuffer];
@@ -51,6 +50,8 @@ internal unsafe class PlaneDecoder
         bundleYMotion        = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1, isSigned: true);
         bundlePatternLengths = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 48, isSigned: false);
         bundleColors         = new Bundle8Bit(MinValueCount, width, addBlockLinesInBuffer: 64, areColorsSigned);
+        bundleDCIntra        = new Bundle16Bit(MinValueCount, width, addBlockLinesInBuffer: 1, startBits: 11, isSigned: false);
+        bundleDCInter        = new Bundle16Bit(MinValueCount, width, addBlockLinesInBuffer: 1, startBits: 11, isSigned: true);
     }
 
     public ReadOnlySpan<byte> Decode(ReadOnlySpan<byte> buffer)
@@ -62,7 +63,9 @@ internal unsafe class PlaneDecoder
         bundlePattern.Reset(ref bitStream);
         bundleXMotion.Reset(ref bitStream);
         bundleYMotion.Reset(ref bitStream);
-        huffPatternLengths = Huffman.ReadTree(ref bitStream);
+        bundlePatternLengths.Reset(ref bitStream);
+        bundleDCIntra.Reset();
+        bundleDCInter.Reset();
 
         bundleBlockType.FillRLE(ref bitStream);
         bundleSubBlockType.FillRLE(ref bitStream);
@@ -70,9 +73,12 @@ internal unsafe class PlaneDecoder
         bundlePattern.FillPairs(ref bitStream);
         bundleXMotion.FillSimple(ref bitStream);
         bundleYMotion.FillSimple(ref bitStream);
+        bundleDCIntra.Fill(ref bitStream);
+        bundleDCInter.Fill(ref bitStream);
+        //bundlePatternLengths.FillSimple(ref bitStream);
 
-        bundleXMotion.Dump(bw);
-        bundleYMotion.Dump(bw);
+        bundleDCIntra.Dump(bw);
+        bundleDCInter.Dump(bw);
         bw.Flush();
 
         bitStream.AlignToWord();
