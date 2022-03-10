@@ -19,7 +19,7 @@ internal unsafe struct Huffman
 
     public byte Read(ref BitStream bitStream)
     {
-        var code = tree[bitStream.Read(maxBitSize)];
+        var code = tree[bitStream.Peek(maxBitSize)];
         bitStream.Read(code >> 4);
         return symbols[code & 0xF];
     }

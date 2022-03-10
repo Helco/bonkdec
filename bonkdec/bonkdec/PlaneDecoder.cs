@@ -6,12 +6,16 @@ using System.Linq;
 internal unsafe class PlaneDecoder
 {
     private const int BlockSize = 8;
+    private const int MinValueCount = 512;
 
     private readonly uint width, height; // aligned to blocks and subsampled
     private readonly byte[][] sampleBuffers;
+    private readonly Bundle4Bit bundleBlockType;
+    private readonly Bundle4Bit bundleSubBlockType;
+    private readonly Bundle4Bit bundleXMotion;
+    private readonly Bundle4Bit bundleYMotion;
+    private readonly Bundle4Bit bundlePatternColors;
     private readonly Huffman[] huffColorsHigh = new Huffman[16];
-    private Huffman huffBlockType;
-    private Huffman huffSubBlockType;
     private Huffman huffColorsLow;
     private Huffman huffPattern;
     private Huffman huffXMotion;
@@ -39,13 +43,18 @@ internal unsafe class PlaneDecoder
             new byte[width * height],
             new byte[width * height]
         };
+        bundleBlockType     = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1);
+        bundleSubBlockType  = new Bundle4Bit(MinValueCount, width / 2, addBlockLinesInBuffer: 1);
+        bundleXMotion       = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1);
+        bundleYMotion       = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1);
+        bundlePatternColors = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 48);
     }
 
     public ReadOnlySpan<byte> Decode(ReadOnlySpan<byte> buffer)
     {
         var bitStream = new BitStream(buffer);
-        huffBlockType = Huffman.ReadTree(ref bitStream);
-        huffSubBlockType = Huffman.ReadTree(ref bitStream);
+        bundleBlockType.Reset(ref bitStream);
+        bundleSubBlockType.Reset(ref bitStream);
         for (int i = 0; i < huffColorsHigh.Length; i++)
             huffColorsHigh[i] = Huffman.ReadTree(ref bitStream);
         huffColorsLow = Huffman.ReadTree(ref bitStream);
@@ -54,20 +63,12 @@ internal unsafe class PlaneDecoder
         huffYMotion = Huffman.ReadTree(ref bitStream);
         huffPatternColors = Huffman.ReadTree(ref bitStream);
 
-        void DumpTree(Huffman t)
-        {
-            bw.Write(t.tree, 0, 16);
-            bw.Write(new ReadOnlySpan<byte>(t.symbols, 16));
-            bw.Flush();
-        }
-        DumpTree(huffBlockType);
-        DumpTree(huffSubBlockType);
-        Array.ForEach(huffColorsHigh, DumpTree);
-        DumpTree(huffColorsLow);
-        DumpTree(huffPattern);
-        DumpTree(huffXMotion);
-        DumpTree(huffYMotion);
-        DumpTree(huffPatternColors);
+        bundleBlockType.FillRLE(ref bitStream);
+        bundleSubBlockType.FillRLE(ref bitStream);
+
+        bundleBlockType.Dump(bw);
+        bundleSubBlockType.Dump(bw);
+        bw.Flush();
 
         bitStream.AlignToWord();
         return buffer.Slice(bitStream.currentOffset * 4);
