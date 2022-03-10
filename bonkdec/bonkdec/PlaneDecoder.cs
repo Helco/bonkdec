@@ -15,8 +15,7 @@ internal unsafe class PlaneDecoder
     private readonly Bundle4Bit bundleXMotion;
     private readonly Bundle4Bit bundleYMotion;
     private readonly Bundle4Bit bundlePatternColors;
-    private readonly Huffman[] huffColorsHigh = new Huffman[16];
-    private Huffman huffColorsLow;
+    private readonly Bundle8Bit bundleColors;
     private Huffman huffPattern;
     private Huffman huffXMotion;
     private Huffman huffYMotion;
@@ -36,6 +35,8 @@ internal unsafe class PlaneDecoder
             return (value + 7u) & ~7u;
         }
 
+        var areColorsSigned = false; // TODO: Add actual 8Bit bundle old format switch
+
         width = AdaptSize(header.Width, subSampled);
         height = AdaptSize(header.Height, subSampled);
         sampleBuffers = new[]
@@ -48,6 +49,7 @@ internal unsafe class PlaneDecoder
         bundleXMotion       = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1);
         bundleYMotion       = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 1);
         bundlePatternColors = new Bundle4Bit(MinValueCount, width, addBlockLinesInBuffer: 48);
+        bundleColors = new Bundle8Bit(MinValueCount, width, addBlockLinesInBuffer: 64, areColorsSigned);
     }
 
     public ReadOnlySpan<byte> Decode(ReadOnlySpan<byte> buffer)
@@ -55,9 +57,7 @@ internal unsafe class PlaneDecoder
         var bitStream = new BitStream(buffer);
         bundleBlockType.Reset(ref bitStream);
         bundleSubBlockType.Reset(ref bitStream);
-        for (int i = 0; i < huffColorsHigh.Length; i++)
-            huffColorsHigh[i] = Huffman.ReadTree(ref bitStream);
-        huffColorsLow = Huffman.ReadTree(ref bitStream);
+        bundleColors.Reset(ref bitStream);
         huffPattern = Huffman.ReadTree(ref bitStream);
         huffXMotion = Huffman.ReadTree(ref bitStream);
         huffYMotion = Huffman.ReadTree(ref bitStream);
@@ -65,9 +65,9 @@ internal unsafe class PlaneDecoder
 
         bundleBlockType.FillRLE(ref bitStream);
         bundleSubBlockType.FillRLE(ref bitStream);
+        bundleColors.Fill(ref bitStream);
 
-        bundleBlockType.Dump(bw);
-        bundleSubBlockType.Dump(bw);
+        bundleColors.Dump(bw);
         bw.Flush();
 
         bitStream.AlignToWord();

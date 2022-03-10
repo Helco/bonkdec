@@ -3,6 +3,15 @@ using System;
 
 using static System.Math;
 
+internal static class Bundle
+{
+    public static int GetMaxLengthInBits(int minValueCount, uint width, int addBlockLinesInBuffer)
+    {
+        var size = minValueCount + addBlockLinesInBuffer * (width / 8);
+        return (int)Ceiling(Log(size, 2)); // fine for the small numbers we work with
+    }
+}
+
 internal class Bundle4Bit
 {
     private readonly sbyte[] buffer; // sbyte for signed 4bit bundles
@@ -10,12 +19,11 @@ internal class Bundle4Bit
     private uint offset, length;
     private Huffman huffman;
 
-    private bool IsDone => offset > length;
+    public bool IsDone => offset > length;
 
     public Bundle4Bit(int minValueCount, uint width, int addBlockLinesInBuffer)
     {
-        var size = minValueCount + addBlockLinesInBuffer * (width / 8);
-        maxLengthInBits = (int)Ceiling(Log(size, 2)); // fine for the small numbers we work with
+        maxLengthInBits = Bundle.GetMaxLengthInBits(minValueCount, width, addBlockLinesInBuffer);
         buffer = new sbyte[1 << maxLengthInBits];
     }
 
@@ -47,6 +55,7 @@ internal class Bundle4Bit
             offset = 1;
             return;
         }
+        offset = 0;
 
         if (bitStream.Read(1) == 1)
         {
