@@ -1,22 +1,17 @@
 ﻿namespace Bonk;
 using System;
 
-using static System.Math;
-
-internal class Bundle8Bit
+internal class Bundle8Bit : Bundle
 {
     private readonly byte[] buffer; // mind the isSigned flag
-    private readonly int maxLengthInBits;
     private readonly bool isSigned;
     private readonly Huffman[] highNibbles = new Huffman[16];
     private Huffman lowNibbles;
-    private uint offset, length, lastTreeI;
-
-    public bool IsDone => offset > length;
+    private uint lastTreeI;
 
     public Bundle8Bit(int minValueCount, uint width, int addBlockLinesInBuffer, bool isSigned)
+        : base(minValueCount, width, addBlockLinesInBuffer)
     {
-        maxLengthInBits = Bundle.GetMaxLengthInBits(minValueCount, width, addBlockLinesInBuffer);
         buffer = new byte[1 << maxLengthInBits];
         this.isSigned = isSigned;
         if (isSigned)
@@ -44,15 +39,8 @@ internal class Bundle8Bit
 
     public void Fill(ref BitStream bitStream)
     {
-        if (offset != length)
+        if (!ReadLength(ref bitStream))
             return;
-        length = bitStream.Read(maxLengthInBits);
-        if (length == 0)
-        {
-            offset = 1;
-            return;
-        }
-        offset = 0;
 
         var isMemset = bitStream.Read(1) != 0;
         for (int i = 0; i < (isMemset ? 1 : length); i++)

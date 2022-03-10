@@ -1,30 +1,15 @@
 ﻿namespace Bonk;
 using System;
 
-using static System.Math;
-
-internal static class Bundle
-{
-    public static int GetMaxLengthInBits(int minValueCount, uint width, int addBlockLinesInBuffer)
-    {
-        var size = minValueCount + addBlockLinesInBuffer * (width / 8);
-        return (int)Ceiling(Log(size, 2)); // fine for the small numbers we work with
-    }
-}
-
-internal class Bundle4Bit
+internal class Bundle4Bit : Bundle
 {
     private readonly byte[] buffer; // mind the isSigned flag
-    private readonly int maxLengthInBits;
     private readonly bool isSigned;
-    private uint offset, length;
     private Huffman huffman;
 
-    public bool IsDone => offset > length;
-
     public Bundle4Bit(int minValueCount, uint width, int addBlockLinesInBuffer, bool isSigned)
+        : base(minValueCount, width, addBlockLinesInBuffer)
     {
-        maxLengthInBits = Bundle.GetMaxLengthInBits(minValueCount, width, addBlockLinesInBuffer);
         buffer = new byte[1 << maxLengthInBits];
         this.isSigned = isSigned;
     }
@@ -49,19 +34,11 @@ internal class Bundle4Bit
     private static readonly int[] RLELengths = new[] { 4, 8, 12, 32 };
     public void FillRLE(ref BitStream bitStream)
     {
-        if (offset != length)
+        if (!ReadLength(ref bitStream))
             return;
-        length = bitStream.Read(maxLengthInBits);
-        if (length == 0)
-        {
-            offset = 1;
-            return;
-        }
-        offset = 0;
 
         if (bitStream.Read(1) == 1)
         {
-            // memset mode
             Array.Fill(buffer, (byte)bitStream.Read(4), 0, (int)length);
             return;
         }
@@ -86,15 +63,8 @@ internal class Bundle4Bit
 
     public void FillPairs(ref BitStream bitStream)
     {
-        if (offset != length)
+        if (!ReadLength(ref bitStream))
             return;
-        length = bitStream.Read(maxLengthInBits);
-        if (length == 0)
-        {
-            offset = 1;
-            return;
-        }
-        offset = 0;
 
         for (int i = 0; i < length; i++)
         {
@@ -103,4 +73,50 @@ internal class Bundle4Bit
             buffer[i] = (byte)(lowNibble | (highNibble << 4));
         }
     }
+
+    public void FillSimple(ref BitStream bitStream)
+    {
+        if (isSigned)
+            FillSigned(ref bitStream);
+        else
+            FillUnsigned(ref bitStream);
+    }
+
+    private void FillUnsigned(ref BitStream bitStream)
+    {
+        if (!ReadLength(ref bitStream))
+            return;
+
+        if (bitStream.Read(1) == 1)
+        {
+            Array.Fill(buffer, (byte)bitStream.Read(4), 0, (int)length);
+            return;
+        }
+
+        for (int i = 0; i < length; i++)
+            buffer[i] = huffman.Read(ref bitStream);
+    }
+
+    private void FillSigned(ref BitStream bitStream)
+    {
+        if (!ReadLength(ref bitStream))
+            return;
+
+        if (bitStream.Read(1) == 1)
+        {
+            var unsigned = (byte)bitStream.Read(4);
+            Array.Fill(buffer, ReadSign(ref bitStream, unsigned), 0, (int)length);
+            return;
+        }
+
+        for (int i = 0; i < length; i++)
+        {
+            var unsigned = huffman.Read(ref bitStream);
+            buffer[i] = ReadSign(ref bitStream, unsigned);
+        }
+    }
+
+    private static byte ReadSign(ref BitStream bitStream, byte value) => value == 0 || bitStream.Read(1) == 0
+        ? value
+        : unchecked((byte)(-(sbyte)value));
 }
