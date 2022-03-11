@@ -9,7 +9,9 @@ decoder.ToggleAllAudioTracks(true);
 
 var waveFormat = CreateWaveFormat(decoder.AudioTracks[0]);
 using var waveWriter = new WaveFileWriter("out.wav", waveFormat);
+Directory.CreateDirectory("out");
 
+int i = 0;
 while (decoder.MoveNext())
 {
     var samples = decoder.Current.AudioSamples;
@@ -17,6 +19,10 @@ while (decoder.MoveNext())
     samples.CopyTo(arr.AsSpan());
     waveWriter.WriteSamples(arr, 0, samples.Length);
     ArrayPool<short>.Shared.Return(arr);
+
+    using var bw = new BinaryWriter(new FileStream($"out/my{i++}.pgm", FileMode.Create, FileAccess.Write));
+    bw.Write(System.Text.Encoding.ASCII.GetBytes($"P5\n{decoder.FrameWidth} {decoder.FrameHeight}\n255\n"));
+    bw.Write(decoder.Current.YPlane);
 }
 
 WaveFormat CreateWaveFormat(Bonk.AudioTrackInfo audioTrackInfo)

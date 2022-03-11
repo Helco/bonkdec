@@ -9,4 +9,6 @@ public class Frame
 
     // TODO Frame should support multiple audio tracks
     public ReadOnlySpan<short> AudioSamples => parent.audioDecoders[0]!.Samples;
+
+    public ReadOnlySpan<byte> YPlane => parent.yDecoder.Target;
 }

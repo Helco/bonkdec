@@ -1,5 +1,6 @@
 ﻿namespace Bonk;
 using System;
+using System.Runtime.CompilerServices;
 
 internal unsafe struct Huffman
 {
@@ -17,6 +18,7 @@ internal unsafe struct Huffman
             symbols[i] = i;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public byte Read(ref BitStream bitStream)
     {
         var code = tree[bitStream.Peek(maxBitSize)];

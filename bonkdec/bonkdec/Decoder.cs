@@ -46,10 +46,10 @@ public unsafe class Decoder : IDisposable, IEnumerator<Frame>
     private readonly ContainerHeader container;
     internal readonly AudioTrackInfo[] audioTracks;
     internal readonly AudioDecoder?[] audioDecoders;
-    private readonly PlaneDecoder? alphaDecoder;
-    private readonly PlaneDecoder yDecoder;
-    private readonly PlaneDecoder? cbDecoder;
-    private readonly PlaneDecoder? crDecoder;
+    internal readonly PlaneDecoder? alphaDecoder;
+    internal readonly PlaneDecoder yDecoder;
+    internal readonly PlaneDecoder? cbDecoder;
+    internal readonly PlaneDecoder? crDecoder;
     private readonly uint[] frameOffsets;
     private readonly bool[] isKeyFrame;
     private readonly byte[] frameBuffer;
@@ -175,7 +175,7 @@ public unsafe class Decoder : IDisposable, IEnumerator<Frame>
     public bool MoveNext()
     {
         currentFrameI++;
-        if (currentFrameI >= container.FrameCount)
+        if (currentFrameI >= 15)
             return false;
         var frameSize = frameOffsets[currentFrameI + 1] - frameOffsets[currentFrameI];
         source.Flush();

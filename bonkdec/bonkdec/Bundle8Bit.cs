@@ -37,6 +37,15 @@ internal class Bundle8Bit : Bundle
         ? isSigned ? unchecked((sbyte)buffer[offset++]) : buffer[offset++]
         : throw new BinkDecoderException("Bundle is empty or done");
 
+    public ReadOnlySpan<byte> Next(int count)
+    {
+        if (count < 0 || offset + count > length)
+            throw new BinkDecoderException("Bundle is empty or done");
+        var result = buffer.AsSpan((int)offset, count);
+        offset += (uint)count;
+        return result;
+    }
+
     public void Fill(ref BitStream bitStream)
     {
         if (!ReadLength(ref bitStream))
