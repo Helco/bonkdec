@@ -20,15 +20,20 @@ unsafe partial class PlaneDecoder
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ulong ScaleHalfRow(ReadOnlySpan<byte> row)
+    {
+        var value = row[0] | ((ulong)row[1] << 16) | ((ulong)row[2] << 32) | ((ulong)row[3] << 48);
+        return value | (value << 8);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void DecodeScaledRawBlock(byte* targetPtr)
     {
         for (int i = 0; i < BlockSize; i++)
         {
             var row = bundleColors.Next(BlockSize);
-            var value1 = row[0] | ((ulong)row[1] << 16) | ((ulong)row[2] << 32) | ((ulong)row[3] << 48);
-            var value2 = row[4] | ((ulong)row[5] << 16) | ((ulong)row[6] << 32) | ((ulong)row[7] << 48);
-            value1 |= value1 << 8;
-            value2 |= value2 << 8;
+            var value1 = ScaleHalfRow(row);
+            var value2 = ScaleHalfRow(row.Slice(BlockSize / 2));
 
             ((ulong*)targetPtr)[0] = value1;
             ((ulong*)targetPtr)[1] = value2;
@@ -78,4 +83,29 @@ unsafe partial class PlaneDecoder
         0x00000000FFFFFFFF, 0x00000000FFFF0000,
         0x000000000000FFFF, 0x0000000000000000
     };
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void DecodeScaledRunFillBlock(ref BitStream bitStream, byte* targetPtr)
+    {
+        byte* tmpBlock = stackalloc byte[64];
+        DecodeRunFillBlockToTemp(ref bitStream, tmpBlock);
+        CopyScaledTempBlockToTarget(tmpBlock, targetPtr);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void CopyScaledTempBlockToTarget(byte* tmpBlock, byte* targetPtr)
+    {
+        for (int i = 0; i < BlockSize; i++)
+        {
+            var value1 = ScaleHalfRow(new ReadOnlySpan<byte>(tmpBlock, BlockSize / 2));
+            var value2 = ScaleHalfRow(new ReadOnlySpan<byte>(tmpBlock + BlockSize/2, BlockSize / 2));
+
+            ((ulong*)targetPtr)[0] = value1;
+            ((ulong*)targetPtr)[1] = value2;
+            targetPtr += width;
+            ((ulong*)targetPtr)[0] = value1;
+            ((ulong*)targetPtr)[1] = value2;
+            targetPtr += width;
+        }
+    }
 }
