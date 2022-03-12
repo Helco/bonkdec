@@ -175,7 +175,7 @@ public unsafe class Decoder : IDisposable, IEnumerator<Frame>
     public bool MoveNext()
     {
         currentFrameI++;
-        if (currentFrameI >= 15)
+        if (currentFrameI >= FrameCount)
             return false;
         var frameSize = frameOffsets[currentFrameI + 1] - frameOffsets[currentFrameI];
         source.Flush();

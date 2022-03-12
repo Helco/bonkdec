@@ -87,14 +87,9 @@ internal unsafe partial class PlaneDecoder
                 bundleDCIntra.Fill(ref bitStream);
                 bundleDCInter.Fill(ref bitStream);
                 bundlePatternLengths.FillSimple(ref bitStream);
-                if (y != 0 && (prevOffset != bitStream.currentOffset || prevBits != bitStream.bitsLeft))
-                {
-                    Console.WriteLine($"{y}");
-                    break;
-                }
 
                 for (int x = 0; x < width; x += BlockSize, sourcePtr += BlockSize, targetPtr += BlockSize)
-                    DecodeBlock(ref sourcePtr, ref targetPtr, ref x, y);
+                    DecodeBlock(ref bitStream, ref sourcePtr, ref targetPtr, ref x, y);
 
                 sourcePtr += blockRowOffset;
                 targetPtr += blockRowOffset;
@@ -106,27 +101,27 @@ internal unsafe partial class PlaneDecoder
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void DecodeBlock(ref byte* sourcePtr, ref byte* targetPtr, ref int x, int y)
+    private void DecodeBlock(ref BitStream bitStream, ref byte* sourcePtr, ref byte* targetPtr, ref int x, int y)
     {
         var blockType = bundleBlockType.Next();
-        if (blockType > 2 && blockType < 6 || blockType == 7)
+        if (blockType == 4)
             Console.WriteLine(blockType);
         switch (blockType)
         {
             case 0: DecodeSkipBlock(sourcePtr, targetPtr);  break;
             case 1:
                 if ((y & BlockSize) == 0) // odd rows skip scaled blocks to not override content from the even rows
-                    DecodeScaledBlock(ref sourcePtr, ref targetPtr);
+                    DecodeScaledBlock(ref bitStream, ref sourcePtr, ref targetPtr);
                 x += BlockSize;
                 sourcePtr += BlockSize;
                 targetPtr += BlockSize;
                 break;
             case 2: DecodeMotionBlock(sourcePtr, targetPtr); break;
-            case 3: break; // TODO: Implement run fill blocks
+            case 3: DecodeRunFillBlock(ref bitStream, targetPtr); break;
             case 4: break; // TODO: Implement motion residue blocks
-            case 5: break; // TODO: Implement intra blocks
+            case 5: DecodeIntraBlock(ref bitStream, targetPtr); break;
             case 6: DecodeFillBlock(targetPtr); break;
-            case 7: break; // TODO: Implement inter blocks
+            case 7: DecodeInterBlock(ref bitStream, sourcePtr, targetPtr); break;
             case 8: DecodePatternFill(targetPtr); break;
             case 9: DecodeRawBlock(targetPtr); break;
             default: throw new BinkDecoderException($"Unsupported block type {blockType}");
@@ -134,15 +129,13 @@ internal unsafe partial class PlaneDecoder
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void DecodeScaledBlock(ref byte* sourcePtr, ref byte* targetPtr)
+    private void DecodeScaledBlock(ref BitStream bitStream, ref byte* sourcePtr, ref byte* targetPtr)
     {
         var blockType = bundleSubBlockType.Next();
-        if (blockType < 6)
-            Console.WriteLine($"S{blockType}");
         switch (blockType)
         {
-            case 3: break; // TODO: Implement scaled run fill blocks
-            case 5: break; // TODO: Implement scaled intra blocks
+            case 3: DecodeScaledRunFillBlock(ref bitStream, targetPtr); break;
+            case 5: DecodeScaledIntraBlock(ref bitStream, targetPtr); break;
             case 6: DecodeScaledFillBlock(targetPtr); break;
             case 8: DecodeScaledPatternFill(targetPtr); break;
             case 9: DecodeScaledRawBlock(targetPtr); break;
