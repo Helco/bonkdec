@@ -51,6 +51,10 @@ internal class Bundle8Bit : Bundle
         if (!ReadLength(ref bitStream))
             return;
 
+#if DEBUG
+        Array.Fill(buffer, (byte)0xB0);
+#endif
+
         var isMemset = bitStream.Read(1) != 0;
         for (int i = 0; i < (isMemset ? 1 : length); i++)
         {

@@ -27,6 +27,13 @@ internal class Bundle4Bit : Bundle
         huffman = Huffman.ReadTree(ref bitStream);
     }
 
+    private void Clear()
+    {
+#if DEBUG
+        Array.Fill(buffer, (byte)0xB0); // canary value for debugging
+#endif
+    }
+
     public int Next() => offset < length
         ? isSigned ? unchecked((sbyte)buffer[offset++]) : buffer[offset++]
         : throw new BinkDecoderException("Bundle is empty or done");
@@ -36,6 +43,7 @@ internal class Bundle4Bit : Bundle
     {
         if (!ReadLength(ref bitStream))
             return;
+        Clear();
 
         if (bitStream.Read(1) == 1)
         {
@@ -65,6 +73,7 @@ internal class Bundle4Bit : Bundle
     {
         if (!ReadLength(ref bitStream))
             return;
+        Clear();
 
         for (int i = 0; i < length; i++)
         {
@@ -86,6 +95,7 @@ internal class Bundle4Bit : Bundle
     {
         if (!ReadLength(ref bitStream))
             return;
+        Clear();
 
         if (bitStream.Read(1) == 1)
         {
@@ -101,6 +111,7 @@ internal class Bundle4Bit : Bundle
     {
         if (!ReadLength(ref bitStream))
             return;
+        Clear();
 
         if (bitStream.Read(1) == 1)
         {
