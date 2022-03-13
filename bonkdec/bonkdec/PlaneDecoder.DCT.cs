@@ -14,7 +14,7 @@ unsafe partial class PlaneDecoder
         for (int i = 0; i < BlockSize; i++)
         {
             for (int j = 0; j < BlockSize; j++)
-                targetPtr[j] = (byte)Math.Clamp((*values++ + 127) >> 8, byte.MinValue, byte.MaxValue);
+                targetPtr[j] = (byte)*values++;
             targetPtr += width;
         }
     }
@@ -28,8 +28,7 @@ unsafe partial class PlaneDecoder
         for (int i = 0; i < BlockSize; i++)
         {
             for (int j = 0; j < 2 * BlockSize; j += 2)
-                targetPtr[j] = targetPtr[j + 1] = targetPtr[width + j] = targetPtr[width + j + 1] =
-                    (byte)Math.Clamp((*values++ + 127) >> 8, byte.MinValue, byte.MaxValue);
+                targetPtr[j] = targetPtr[j + 1] = targetPtr[width + j] = targetPtr[width + j + 1] = (byte)*values++;
             targetPtr += 2 * width;
         }
     }
@@ -44,19 +43,20 @@ unsafe partial class PlaneDecoder
         for (int i = 0; i < BlockSize; i++)
         {
             for (int j = 0; j < BlockSize; j++)
-                targetPtr[j] = (byte)Math.Clamp(sourcePtr[j] + ((*values++ + 127) >> 8), byte.MinValue, byte.MaxValue);
+                targetPtr[j] = (byte)(sourcePtr[j] + unchecked((sbyte)values[j]));
             sourcePtr += width;
             targetPtr += width;
+            values += 8;
         }
     }
 
-    private short* DecodeDCTValues(ref BitStream bitStream, Bundle16Bit dcBundle, short* values, ReadOnlySpan<int> intraQuantizers)
+    private short* DecodeDCTValues(ref BitStream bitStream, Bundle16Bit dcBundle, short* values, ReadOnlySpan<int> allQuantizers)
     {
         short* quantCoeffs = stackalloc short[BlockSize * BlockSize];
         quantCoeffs[0] = unchecked(dcBundle.Next());
         DecodeDCTCoefficients(ref bitStream, quantCoeffs);
         uint quantizerI = bitStream.Read(4);
-        var quantizers = intraQuantizers.Slice(BlockSize * BlockSize * (int)quantizerI, BlockSize * BlockSize);
+        var quantizers = allQuantizers.Slice(BlockSize * BlockSize * (int)quantizerI, BlockSize * BlockSize);
 
         IDCT8x8.idct(quantCoeffs, values, quantizers);
         return values;
@@ -64,9 +64,6 @@ unsafe partial class PlaneDecoder
 
     private void DecodeDCTCoefficients(ref BitStream bitStream, short* quantCoeffsOut)
     {
-        if (bitStream.currentWord == 0x85 && bitStream.currentOffset * 4 == 0xD20)
-            Console.WriteLine("AHA");
-        var word = bitStream.currentWord;
         Span<short> quantCoeffs = stackalloc short[BlockSize * BlockSize];
         Span<(byte coeffI, byte mode)> ops = stackalloc (byte, byte)[BlockSize * BlockSize * 2];
         int curOp, startOp = BlockSize * BlockSize, nextOp = startOp + 6;
@@ -146,10 +143,6 @@ unsafe partial class PlaneDecoder
         var coeffPairsOut = new Span<uint>(quantCoeffsOut, coeffPairsIn.Length);
         for (int i = 0; i < DCTScanOrder.Length; i++)
             coeffPairsOut[i] = coeffPairsIn[DCTScanOrder[i]];
-        for (int i = 0; i < 64; i++)
-            bw.Write(quantCoeffsOut[i]);
-        //bw.Write(word);
-        bw.Flush();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
