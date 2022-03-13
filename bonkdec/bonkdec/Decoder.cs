@@ -48,8 +48,8 @@ public unsafe class Decoder : IDisposable, IEnumerator<Frame>
     internal readonly AudioDecoder?[] audioDecoders;
     internal readonly PlaneDecoder? alphaDecoder;
     internal readonly PlaneDecoder yDecoder;
-    internal readonly PlaneDecoder? cbDecoder;
-    internal readonly PlaneDecoder? crDecoder;
+    internal readonly PlaneDecoder? uDecoder;
+    internal readonly PlaneDecoder? vDecoder;
     private readonly uint[] frameOffsets;
     private readonly bool[] isKeyFrame;
     private readonly byte[] frameBuffer;
@@ -143,8 +143,8 @@ public unsafe class Decoder : IDisposable, IEnumerator<Frame>
             alphaDecoder = new PlaneDecoder(container, subSampled: false);
         if (!container.VideoFlags.HasFlag(VideoFlags.Grayscale))
         {
-            cbDecoder = new PlaneDecoder(container, subSampled: true);
-            crDecoder = new PlaneDecoder(container, subSampled: true);
+            uDecoder = new PlaneDecoder(container, subSampled: true);
+            vDecoder = new PlaneDecoder(container, subSampled: true);
         }
     }
 
@@ -228,11 +228,12 @@ public unsafe class Decoder : IDisposable, IEnumerator<Frame>
         planeBuffer = yDecoder.Decode(planeBuffer);
         frameStream.Position += yPlaneSize - 4;
 
-        if (cbDecoder != null && crDecoder != null)
+        if (uDecoder != null && vDecoder != null)
         {
             // TODO: Check order of color planes
-            planeBuffer = cbDecoder.Decode(planeBuffer);
-            crDecoder.Decode(planeBuffer);
+            planeBuffer = new ReadOnlySpan<byte>(frameBuffer, (int)frameStream.Position, frameBuffer.Length - (int)frameStream.Position);
+            planeBuffer = uDecoder.Decode(planeBuffer);
+            vDecoder.Decode(planeBuffer);
         }
 
         return true;

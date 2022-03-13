@@ -3,7 +3,7 @@ using System.Buffers;
 using System.IO;
 using NAudio.Wave;
 
-var fileStream = new FileStream(@"C:\dev\zanzarah\Resources\Videos\_i001.bik", FileMode.Open, FileAccess.Read);
+var fileStream = new FileStream(@"C:\dev\zanzarah\Resources\Videos\_i001c.bik", FileMode.Open, FileAccess.Read);
 using var decoder = new Bonk.Decoder(fileStream);
 decoder.ToggleAllAudioTracks(true);
 

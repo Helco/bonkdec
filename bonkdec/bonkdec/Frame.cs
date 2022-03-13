@@ -11,4 +11,7 @@ public class Frame
     public ReadOnlySpan<short> AudioSamples => parent.audioDecoders[0]!.Samples;
 
     public ReadOnlySpan<byte> YPlane => parent.yDecoder.Target;
+    public ReadOnlySpan<byte> VPlane => parent.uDecoder?.Target ?? ReadOnlySpan<byte>.Empty;
+    public ReadOnlySpan<byte> UPlane => parent.vDecoder?.Target ?? ReadOnlySpan<byte>.Empty;
+    public ReadOnlySpan<byte> APlane => parent.alphaDecoder?.Target ?? ReadOnlySpan<byte>.Empty;
 }
