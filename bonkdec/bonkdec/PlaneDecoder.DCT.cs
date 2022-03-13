@@ -43,10 +43,10 @@ unsafe partial class PlaneDecoder
         for (int i = 0; i < BlockSize; i++)
         {
             for (int j = 0; j < BlockSize; j++)
-                targetPtr[j] = (byte)(sourcePtr[j] + unchecked((sbyte)values[j]));
+                targetPtr[j] = unchecked((byte)(sourcePtr[j] + (sbyte)values[j]));
             sourcePtr += width;
             targetPtr += width;
-            values += 8;
+            values += BlockSize;
         }
     }
 
@@ -66,7 +66,7 @@ unsafe partial class PlaneDecoder
     {
         Span<short> quantCoeffs = stackalloc short[BlockSize * BlockSize];
         Span<(byte coeffI, byte mode)> ops = stackalloc (byte, byte)[BlockSize * BlockSize * 2];
-        int curOp, startOp = BlockSize * BlockSize, nextOp = startOp + 6;
+        int curOp, startOp = ops.Length/2, nextOp = startOp + 6;
         ops[startOp + 0] = (4, 0);
         ops[startOp + 1] = (24, 0);
         ops[startOp + 2] = (44, 0);
@@ -87,11 +87,10 @@ unsafe partial class PlaneDecoder
                     continue;
                 }
 
-                var curMode = ops[curOp].mode;
+                var (curCoeffI, curMode) = ops[curOp];
                 switch (curMode)
                 {
                     case 1:
-                        byte curCoeffI = ops[curOp].coeffI;
                         ops[curOp] = (curCoeffI, 2);
                         ops[nextOp++] = ((byte)(curCoeffI + 4), 2);
                         ops[nextOp++] = ((byte)(curCoeffI + 8), 2);
@@ -99,7 +98,6 @@ unsafe partial class PlaneDecoder
                         break;
 
                     case 0:
-                        curCoeffI = ops[curOp].coeffI;
                         ops[curOp] = ((byte)(curCoeffI + 4), 1);
                         for (int j = 0; j < 4; j++, curCoeffI++)
                         {
@@ -114,7 +112,6 @@ unsafe partial class PlaneDecoder
                         break;
                         
                     case 2:
-                        curCoeffI = ops[curOp].coeffI;
                         ops[curOp++] = (0, 0);
                         for (int j = 0; j < 4; j++, curCoeffI++)
                         {
@@ -129,11 +126,11 @@ unsafe partial class PlaneDecoder
                         break;
 
                     case 3:
-                        quantCoeffs[ops[curOp].coeffI] = ReadCoefficient(ref bitStream, mask, bitCount);
+                        quantCoeffs[curCoeffI] = ReadCoefficient(ref bitStream, mask, bitCount);
                         ops[curOp++] = (0, 0);
                         break;
 
-                    default: throw new BinkDecoderException($"Unexpected DCT coefficient op mode: {ops[curOp].mode}");
+                    default: throw new BinkDecoderException($"Unexpected DCT coefficient op mode: {curMode}");
                 }
             }
         }

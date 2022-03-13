@@ -104,8 +104,6 @@ internal unsafe partial class PlaneDecoder
     private void DecodeBlock(ref BitStream bitStream, ref byte* sourcePtr, ref byte* targetPtr, ref int x, int y)
     {
         var blockType = bundleBlockType.Next();
-        if (blockType == 4)
-            Console.WriteLine(blockType);
         switch (blockType)
         {
             case 0: DecodeSkipBlock(sourcePtr, targetPtr);  break;
@@ -118,7 +116,7 @@ internal unsafe partial class PlaneDecoder
                 break;
             case 2: DecodeMotionBlock(sourcePtr, targetPtr); break;
             case 3: DecodeRunFillBlock(ref bitStream, targetPtr); break;
-            case 4: break; // TODO: Implement motion residue blocks
+            case 4: DecodeResidueBlock(ref bitStream, sourcePtr, targetPtr); break;
             case 5: DecodeIntraBlock(ref bitStream, targetPtr); break;
             case 6: DecodeFillBlock(targetPtr); break;
             case 7: DecodeInterBlock(ref bitStream, sourcePtr, targetPtr); break;
