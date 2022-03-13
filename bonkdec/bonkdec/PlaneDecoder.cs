@@ -124,6 +124,10 @@ internal unsafe partial class PlaneDecoder
             case 9: DecodeRawBlock(targetPtr); break;
             default: throw new BinkDecoderException($"Unsupported block type {blockType}");
         }
+#if BONKDEC_RENDER_BLOCKS
+        if (blockType != 1)
+            RenderDebugBlock(blockType, targetPtr);
+#endif
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -139,5 +143,8 @@ internal unsafe partial class PlaneDecoder
             case 9: DecodeScaledRawBlock(targetPtr); break;
             default: throw new BinkDecoderException($"Unsupport block sub type {blockType}");
         }
+#if BONKDEC_RENDER_BLOCKS
+        RenderScaledDebugBlock(blockType, targetPtr);
+#endif
     }
 }

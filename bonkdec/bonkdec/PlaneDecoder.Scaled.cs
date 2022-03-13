@@ -47,12 +47,12 @@ unsafe partial class PlaneDecoder
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void DecodeScaledPatternFill(byte* targetPtr)
     {
-        ulong color1 = (uint)bundleColors.Next();
+        ulong color1 = (ulong)bundleColors.Next();
         color1 |= color1 << 8;
         color1 |= color1 << 16;
         color1 |= color1 << 32;
 
-        ulong color2 = (uint)bundleColors.Next();
+        ulong color2 = (ulong)bundleColors.Next();
         color2 |= color2 << 8;
         color2 |= color2 << 16;
         color2 |= color2 << 32;

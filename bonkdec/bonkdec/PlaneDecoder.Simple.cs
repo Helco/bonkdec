@@ -7,12 +7,7 @@ internal unsafe partial class PlaneDecoder
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void DecodeSkipBlock(byte* sourcePtr, byte* targetPtr)
     {
-        for (int i = 0; i < BlockSize; i++)
-        {
-            *((ulong*)targetPtr) = *((ulong*)sourcePtr);
-            targetPtr += width;
-            sourcePtr += width;
-        }
+        CopyBlockToTarget(sourcePtr, targetPtr, width);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -20,7 +15,7 @@ internal unsafe partial class PlaneDecoder
     {
         // This will cause unaligned access, maybe optimized versions should be used instead
         sourcePtr = unchecked(sourcePtr + bundleXMotion.Next() + bundleYMotion.Next() * width);
-        DecodeSkipBlock(sourcePtr, targetPtr);
+        CopyBlockToTarget(sourcePtr, targetPtr, width);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -71,10 +66,10 @@ internal unsafe partial class PlaneDecoder
     private static readonly uint[] Patterns = new uint[]
     {
         // basically 0-16 in binary with whole bytes as bits
-        0xFFFFFFFF, 0xFFFFFF00, 0xFFFF00FF, 0xFFFF0000,
-        0xFF00FFFF, 0xFF00FF00, 0xFF0000FF, 0xFF000000,
-        0x00FFFFFF, 0x00FFFF00, 0x00FF00FF, 0x00FF0000,
-        0x0000FFFF, 0x0000FF00, 0x000000FF, 0x00000000,
+        0xFF_FF_FF_FF, 0xFF_FF_FF_00, 0xFF_FF_00_FF, 0xFF_FF_00_00,
+        0xFF_00_FF_FF, 0xFF_00_FF_00, 0xFF_00_00_FF, 0xFF_00_00_00,
+        0x00_FF_FF_FF, 0x00_FF_FF_00, 0x00_FF_00_FF, 0x00_FF_00_00,
+        0x00_00_FF_FF, 0x00_00_FF_00, 0x00_00_00_FF, 0x00_00_00_00,
     };
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -82,7 +77,7 @@ internal unsafe partial class PlaneDecoder
     {
         byte* tmpBlock = stackalloc byte[64];
         DecodeRunFillBlockToTemp(ref bitStream, tmpBlock);
-        CopyTempBlockToTarget(tmpBlock, targetPtr);
+        CopyBlockToTarget(tmpBlock, targetPtr, BlockSize);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -111,13 +106,13 @@ internal unsafe partial class PlaneDecoder
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void CopyTempBlockToTarget(byte* tmpBlock, byte* targetPtr)
+    private void CopyBlockToTarget(byte* sourcePtr, byte* targetPtr, uint pitch)
     {
         for (int i = 0; i < BlockSize; i++)
         {
-            *((ulong*)targetPtr) = *((ulong*)tmpBlock);
+            *((ulong*)targetPtr) = *((ulong*)sourcePtr);
             targetPtr += width;
-            tmpBlock += BlockSize;
+            sourcePtr += pitch;
         }
     }
 
