@@ -99,6 +99,7 @@ unsafe partial class PlaneDecoder
         {
             var value1 = ScaleHalfRow(new ReadOnlySpan<byte>(tmpBlock, BlockSize / 2));
             var value2 = ScaleHalfRow(new ReadOnlySpan<byte>(tmpBlock + BlockSize/2, BlockSize / 2));
+            tmpBlock += BlockSize;
 
             ((ulong*)targetPtr)[0] = value1;
             ((ulong*)targetPtr)[1] = value2;
